@@ -1,0 +1,18 @@
+{
+    "name": "jankx/membership-levels",
+    "autoload": {
+        "psr-4": {
+            "Jankx\\MembershipLevels\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Puleeno Nguyen",
+            "email": "puleeno@gmail.com"
+        }
+    ],
+    "require": {},
+    "config": {
+        "vendor-dir": "libs"
+    }
+}
