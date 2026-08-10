@@ -1,10 +1,10 @@
 {
     "name": "Membership Levels",
     "version": "1.0.0",
-    "description": "Manage user membership tiers and their privileges.",
+    "description": "Hệ thống hạng thành viên: thiết lập tiêu chí, tự động và thủ công phân hạng cho user.",
     "author": "Jankx",
     "extension_id": "membership-levels",
-    "context": ["admin", "frontend"],
+    "context": ["admin", "frontend", "rest"],
     "caller": {
         "file": "MembershipLevelsExtension.php",
         "class": "Jankx\\Extensions\\MembershipLevels\\MembershipLevelsExtension",
