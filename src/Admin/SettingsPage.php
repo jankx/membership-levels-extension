@@ -274,14 +274,26 @@ class SettingsPage
 
         $allCriteria = \Jankx\Extensions\MembershipLevels\MembershipLevelsExtension::getCriteria();
         $parts = [];
-        foreach ($criteria as $c) {
-            $label = $allCriteria[$c['type']]['label'] ?? $c['type'];
-            $min = number_format($c['min'], 0, ',', '.');
-            if (!empty($c['max']) && $c['max'] > 0) {
-                $max = number_format($c['max'], 0, ',', '.');
-                $parts[] = "{$label}: {$min} - {$max}";
+        foreach ($criteria as $key => $c) {
+            // Handle associative format: ['total_orders' => ['min' => 3]]
+            if (is_string($key)) {
+                $type = $key;
+                $min = $c['min'] ?? 0;
+                $max = $c['max'] ?? 0;
             } else {
-                $parts[] = "{$label}: >= {$min}";
+                // Handle indexed format: [['type' => 'total_orders', 'min' => 3]]
+                $type = $c['type'] ?? '';
+                $min = $c['min'] ?? 0;
+                $max = $c['max'] ?? 0;
+            }
+
+            $label = $allCriteria[$type]['label'] ?? $type;
+            $minFormatted = number_format($min, 0, ',', '.');
+            if (!empty($max) && $max > 0) {
+                $maxFormatted = number_format($max, 0, ',', '.');
+                $parts[] = "{$label}: {$minFormatted} - {$maxFormatted}";
+            } else {
+                $parts[] = "{$label}: >= {$minFormatted}";
             }
         }
         return implode(', ', $parts);

@@ -10,6 +10,15 @@ class MembershipLevelPostType
         add_action('init', [$this, 'register_post_type']);
         add_action('add_meta_boxes', [$this, 'addMetaBoxes']);
         add_action('save_post_' . self::POST_TYPE, [$this, 'saveMetaBox']);
+        add_filter('use_block_editor_for_post_type', [$this, 'disableGutenberg'], 10, 2);
+    }
+
+    public function disableGutenberg(string $enabled, string $postType): bool
+    {
+        if ($postType === self::POST_TYPE) {
+            return false;
+        }
+        return $enabled;
     }
 
     public function register_post_type(): void
@@ -42,9 +51,13 @@ class MembershipLevelPostType
             'show_in_rest' => true,
             'supports'     => ['title', 'editor', 'thumbnail'],
             'capability_type' => 'post',
-            'map_meta_cap'    => false,
+            'map_meta_cap'    => true,
             'capabilities'    => [
                 'create_posts' => 'do_not_allow',
+                'edit_posts'   => 'edit_posts',
+                'edit_others_posts' => 'edit_others_posts',
+                'publish_posts' => 'publish_posts',
+                'read_private_posts' => 'read_private_posts',
             ],
         ]);
     }

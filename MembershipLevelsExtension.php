@@ -280,7 +280,7 @@ class MembershipLevelsExtension extends AbstractExtension
      */
     public function renderUserLevelField($user): void
     {
-        if (!current_user_can('edit_user', $user->ID)) {
+        if (!current_user_can('manage_options')) {
             return;
         }
 
@@ -311,7 +311,7 @@ class MembershipLevelsExtension extends AbstractExtension
      */
     public function saveUserLevelField(int $userId): void
     {
-        if (!current_user_can('edit_user', $userId)) {
+        if (!current_user_can('manage_options')) {
             return;
         }
 
