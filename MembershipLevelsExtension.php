@@ -280,26 +280,29 @@ class MembershipLevelsExtension extends AbstractExtension
      */
     public function renderUserLevelField($user): void
     {
-        if (!current_user_can('manage_options')) {
-            return;
-        }
-
         $currentLevel = $this->getUserLevel($user->ID);
         $levels = self::getLevels();
+        $levelData = $levels[$currentLevel] ?? $levels['bronze'];
+        $isAdmin = current_user_can('manage_options');
         ?>
         <h2>Hạng thành viên</h2>
         <table class="form-table">
             <tr>
                 <th><label for="jankx_membership_level">Hạng hiện tại</label></th>
                 <td>
-                    <select id="jankx_membership_level" name="jankx_membership_level">
-                        <?php foreach ($levels as $slug => $level): ?>
-                            <option value="<?php echo esc_attr($slug); ?>" <?php selected($currentLevel, $slug); ?>>
-                                <?php echo esc_html($level['name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">Chọn hạng thành viên thủ công. Bỏ trống để hệ thống tự động đánh giá.</p>
+                    <?php if ($isAdmin): ?>
+                        <select id="jankx_membership_level" name="jankx_membership_level">
+                            <?php foreach ($levels as $slug => $level): ?>
+                                <option value="<?php echo esc_attr($slug); ?>" <?php selected($currentLevel, $slug); ?>>
+                                    <?php echo esc_html($level['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description">Chọn hạng thành viên thủ công. Bỏ trống để hệ thống tự động đánh giá.</p>
+                    <?php else: ?>
+                        <span style="display:inline-block;width:12px;height:12px;border-radius:50;background:<?php echo esc_attr($levelData['color']); ?>;vertical-align:middle;margin-right:6px;"></span>
+                        <strong><?php echo esc_html($levelData['name']); ?></strong>
+                    <?php endif; ?>
                 </td>
             </tr>
         </table>
