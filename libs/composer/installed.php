@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'jankx/membership-levels',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-master',
+        'version' => 'dev-master',
+        'reference' => 'e0d1945f2eaa9568df5e98c79ced1e6618039d93',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         'jankx/membership-levels' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-master',
+            'version' => 'dev-master',
+            'reference' => 'e0d1945f2eaa9568df5e98c79ced1e6618039d93',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
