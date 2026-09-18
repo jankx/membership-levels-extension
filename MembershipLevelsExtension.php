@@ -52,6 +52,16 @@ class MembershipLevelsExtension extends AbstractExtension
         // Seed default levels on first activation
         add_action('admin_init', [$this, 'maybeSeedDefaultLevels']);
 
+        // Gutenberg blocks
+        if (did_action('init')) {
+            $this->registerBlocks();
+        } else {
+            add_action('init', [$this, 'registerBlocks']);
+        }
+
+        // Register sub-page with My Account
+        add_action('jankx/my_account/register_sub_pages', [$this, 'registerAccountSubPage']);
+
         // Admin pages
         if (is_admin()) {
             (new Admin\SettingsPage())->register();
@@ -69,6 +79,33 @@ class MembershipLevelsExtension extends AbstractExtension
         add_action('edit_user_profile', [$this, 'renderUserLevelField']);
         add_action('personal_options_update', [$this, 'saveUserLevelField']);
         add_action('edit_user_profile_update', [$this, 'saveUserLevelField']);
+    }
+
+    public function registerBlocks(): void
+    {
+        $blocksDir = __DIR__ . '/blocks';
+        if (!is_dir($blocksDir)) {
+            return;
+        }
+
+        $blockPath = $blocksDir;
+        if (!file_exists($blockPath . '/block.json')) {
+            return;
+        }
+
+        $block = new \Jankx\Extensions\MembershipLevels\Blocks\AccountTabMembershipBlock($blockPath);
+        $block->setBlockPath($blockPath);
+        $block->boot();
+        $block->register();
+    }
+
+    public function registerAccountSubPage(): void
+    {
+        if (!class_exists('\Jankx\Extensions\MyAccount\MyAccountExtension')) {
+            return;
+        }
+
+        \Jankx\Extensions\MyAccount\MyAccountExtension::registerSubPageClass(new \Jankx\Extensions\MembershipLevels\MyAccount\MembershipSubPage());
     }
 
     /**
