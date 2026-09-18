@@ -1,17 +1,13 @@
-import { useBlockProps } from '@wordpress/block-editor';
-import ServerSideRender from '@wordpress/server-side-render';
+import { useBlockProps, InnerBlocks } from '@wordpress/block-editor';
 
-export default function Edit({ attributes }) {
+export default function Edit() {
     const blockProps = useBlockProps({
-        className: 'jankx-account-tab-membership is-editor-preview',
+        className: 'jankx-account-tab-membership',
     });
 
     return (
         <div {...blockProps}>
-            <ServerSideRender
-                block="jankx/account-tab-membership"
-                attributes={attributes}
-            />
+            <InnerBlocks />
         </div>
     );
 }

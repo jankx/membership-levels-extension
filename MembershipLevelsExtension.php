@@ -89,14 +89,29 @@ class MembershipLevelsExtension extends AbstractExtension
         }
 
         $blockPath = $blocksDir;
-        if (!file_exists($blockPath . '/block.json')) {
-            return;
+        if (file_exists($blockPath . '/block.json')) {
+            $block = new \Jankx\Extensions\MembershipLevels\Blocks\AccountTabMembershipBlock($blockPath);
+            $block->setBlockPath($blockPath);
+            $block->boot();
+            $block->register();
         }
 
-        $block = new \Jankx\Extensions\MembershipLevels\Blocks\AccountTabMembershipBlock($blockPath);
-        $block->setBlockPath($blockPath);
-        $block->boot();
-        $block->register();
+        $childBlocks = [
+            'membership-current-tier' => \Jankx\Extensions\MembershipLevels\Blocks\MembershipCurrentTierBlock::class,
+            'membership-privileges' => \Jankx\Extensions\MembershipLevels\Blocks\MembershipPrivilegesBlock::class,
+            'membership-all-levels' => \Jankx\Extensions\MembershipLevels\Blocks\MembershipAllLevelsBlock::class,
+        ];
+
+        foreach ($childBlocks as $dirName => $blockClass) {
+            $childPath = $blocksDir . '/' . $dirName;
+            if (!file_exists($childPath . '/block.json')) {
+                continue;
+            }
+            $block = new $blockClass($childPath);
+            $block->setBlockPath($childPath);
+            $block->boot();
+            $block->register();
+        }
     }
 
     public function registerAccountSubPage(): void

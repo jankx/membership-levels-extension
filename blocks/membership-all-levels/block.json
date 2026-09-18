@@ -1,13 +1,14 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
     "apiVersion": 3,
-    "name": "jankx/account-tab-membership",
-    "title": "Membership Tab",
+    "name": "jankx/membership-all-levels",
+    "title": "All Levels",
     "category": "jankx",
-    "icon": "awards",
-    "description": "Display user's membership tier, benefits and all available levels.",
+    "icon": "list-view",
+    "description": "All available membership levels.",
     "textdomain": "jankx",
     "editorScript": "file:./build/index.tsx.js",
+    "parent": ["jankx/account-tab-membership"],
     "attributes": {
         "jankxHideOnUltrawide": { "type": "boolean", "default": false },
         "jankxHideOnPc": { "type": "boolean", "default": false },
@@ -15,11 +16,5 @@
         "jankxHideOnMobile": { "type": "boolean", "default": false },
         "jankxFlexGrow": { "type": "boolean", "default": false }
     },
-    "supports": {
-        "html": false,
-        "inserter": false,
-        "align": false,
-        "spacing": false
-    },
-    "allowedBlocks": ["jankx/membership-current-tier", "jankx/membership-privileges", "jankx/membership-all-levels"]
+    "supports": { "html": false, "inserter": false }
 }

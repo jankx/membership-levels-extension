@@ -33,6 +33,10 @@ class MembershipSubPage extends AbstractSubPage
 
     public function getContent(): string
     {
-        return '<!-- wp:jankx/account-tab-membership /-->';
+        return '<!-- wp:jankx/account-tab-membership -->'
+            . '<!-- wp:jankx/membership-current-tier /-->'
+            . '<!-- wp:jankx/membership-privileges /-->'
+            . '<!-- wp:jankx/membership-all-levels /-->'
+            . '<!-- /wp:jankx/account-tab-membership -->';
     }
 }
