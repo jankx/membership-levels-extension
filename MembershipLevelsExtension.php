@@ -97,9 +97,10 @@ class MembershipLevelsExtension extends AbstractExtension
         }
 
         $childBlocks = [
-            'membership-current-tier' => \Jankx\Extensions\MembershipLevels\Blocks\MembershipCurrentTierBlock::class,
-            'membership-privileges' => \Jankx\Extensions\MembershipLevels\Blocks\MembershipPrivilegesBlock::class,
-            'membership-all-levels' => \Jankx\Extensions\MembershipLevels\Blocks\MembershipAllLevelsBlock::class,
+            'membership-current-tier'  => \Jankx\Extensions\MembershipLevels\Blocks\MembershipCurrentTierBlock::class,
+            'membership-privileges'    => \Jankx\Extensions\MembershipLevels\Blocks\MembershipPrivilegesBlock::class,
+            'membership-all-levels'    => \Jankx\Extensions\MembershipLevels\Blocks\MembershipAllLevelsBlock::class,
+            'account-level-summary'    => \Jankx\Extensions\MembershipLevels\Blocks\AccountLevelSummaryBlock::class,
         ];
 
         foreach ($childBlocks as $dirName => $blockClass) {
