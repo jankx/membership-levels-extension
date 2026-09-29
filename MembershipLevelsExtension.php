@@ -62,6 +62,15 @@ class MembershipLevelsExtension extends AbstractExtension
         // Register sub-page with My Account
         add_action('jankx/my_account/register_sub_pages', [$this, 'registerAccountSubPage']);
 
+        // Overview membership section: replace the legacy hardcoded card with
+        // the level slider/switcher. Runs on init so it executes after the
+        // legacy default callbacks have been registered by my-account.
+        if (did_action('init')) {
+            $this->registerOverviewHook();
+        } else {
+            add_action('init', [$this, 'registerOverviewHook'], 50);
+        }
+
         // Admin pages
         if (is_admin()) {
             (new Admin\SettingsPage())->register();
@@ -122,6 +131,16 @@ class MembershipLevelsExtension extends AbstractExtension
         }
 
         \Jankx\Extensions\MyAccount\MyAccountExtension::registerSubPageClass(new \Jankx\Extensions\MembershipLevels\MyAccount\MembershipSubPage());
+    }
+
+    /**
+     * Swap the legacy hardcoded overview membership card for the level
+     * slider/switcher provided by this extension.
+     */
+    public function registerOverviewHook(): void
+    {
+        remove_action('jankx/my_account/overview/membership', ['\Jankx\Extensions\MyAccount\Shortcode\OverviewTab', 'renderMembership']);
+        add_action('jankx/my_account/overview/membership', [\Jankx\Extensions\MembershipLevels\MyAccount\OverviewMembership::class, 'render']);
     }
 
     /**
@@ -259,6 +278,11 @@ class MembershipLevelsExtension extends AbstractExtension
                 'color' => '#CD7F32',
                 'priority' => 0,
                 'criteria' => [],
+                'privileges' => [
+                    'Tích lũy điểm với mỗi chuyến đi',
+                    'Nhận thông báo khuyến mãi sớm',
+                    'Hỗ trợ khách hàng qua email',
+                ],
             ],
             'silver' => [
                 'name' => 'Silver',
@@ -268,6 +292,11 @@ class MembershipLevelsExtension extends AbstractExtension
                 'criteria' => [
                     'total_orders' => ['min' => 3],
                     'total_spent' => ['min' => 5000000],
+                ],
+                'privileges' => [
+                    'Giảm 5% cho mọi tour',
+                    'Ưu tiên hỗ trợ khách hàng',
+                    'Giữ chỗ tour đến 24 giờ',
                 ],
             ],
             'gold' => [
@@ -279,6 +308,11 @@ class MembershipLevelsExtension extends AbstractExtension
                     'total_orders' => ['min' => 10],
                     'total_spent' => ['min' => 20000000],
                 ],
+                'privileges' => [
+                    'Giảm 10% cho mọi tour',
+                    'Miễn phí hủy trước 7 ngày',
+                    'Quà tặng nhân dịp sinh nhật',
+                ],
             ],
             'diamond' => [
                 'name' => 'Diamond',
@@ -289,11 +323,34 @@ class MembershipLevelsExtension extends AbstractExtension
                     'total_orders' => ['min' => 20],
                     'total_spent' => ['min' => 50000000],
                 ],
+                'privileges' => [
+                    'Giảm 15% cho mọi tour',
+                    'Tư vấn viên riêng 24/7',
+                    'Đặt tour không cần đặt cọc',
+                ],
             ],
         ];
 
         $custom = get_option(self::LEVELS_OPTION, []);
-        return wp_parse_args($custom, $defaults);
+
+        // Merge per level so a saved level without e.g. privileges still
+        // inherits the defaults for that level.
+        $levels = [];
+        foreach ($defaults as $slug => $level) {
+            $saved = (is_array($custom) && isset($custom[$slug]) && is_array($custom[$slug]))
+                ? $custom[$slug]
+                : [];
+            $levels[$slug] = wp_parse_args($saved, $level);
+        }
+        if (is_array($custom)) {
+            foreach ($custom as $slug => $level) {
+                if (!isset($levels[$slug]) && is_array($level)) {
+                    $levels[$slug] = $level;
+                }
+            }
+        }
+
+        return $levels;
     }
 
     /**
