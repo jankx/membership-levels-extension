@@ -10,7 +10,6 @@ class MembershipLevelsExtension extends AbstractExtension
     const LEVELS_OPTION = 'jankx_membership_levels';
     const CRITERIA_OPTION = 'jankx_membership_criteria';
     const USER_LEVEL_META = 'jankx_membership_level';
-    const BENEFIT_SEED_VERSION = 2;
 
     public function __construct()
     {
@@ -57,9 +56,8 @@ class MembershipLevelsExtension extends AbstractExtension
         // -> 3-tier (silver=Bạc, gold=Vàng, platinum=Bạch kim)
         add_action('init', [$this, 'maybeMigrateLevelSlugs'], 60);
 
-        // One-time seed: benefits -> terms of the membership_benefit taxonomy
-        // (assigned on membership_level posts). Frontend + admin.
-        add_action('init', [$this, 'maybeSeedBenefits'], 70);
+        // Benefits seeder lives in the theme: seeders/membership-benefits-data.php
+        // (run via `wp eval-file` — see that file's docblock).
 
         // Gutenberg blocks
         if (did_action('init')) {
@@ -308,104 +306,10 @@ class MembershipLevelsExtension extends AbstractExtension
     }
 
     /**
-     * One-time seed per version: wipe the membership_benefit taxonomy and
-     * (re)create terms from the default privileges — term name = benefit
-     * title, term description = benefit subtitle. Assigned per level post.
-     * Duplicate titles in the source list collapse (WP terms are unique
-     * per name); admins can edit the terms later.
-     */
-    public function maybeSeedBenefits(): void
-    {
-        if ((int) get_option('jankx_membership_benefits_seeded') >= self::BENEFIT_SEED_VERSION) {
-            return;
-        }
-        if (!taxonomy_exists(PostTypes\MembershipLevelPostType::BENEFIT_TAXONOMY)) {
-            return;
-        }
-
-        $taxonomy = PostTypes\MembershipLevelPostType::BENEFIT_TAXONOMY;
-
-        // Fresh data for this seed version: remove previous terms.
-        $existing = get_terms([
-            'taxonomy'   => $taxonomy,
-            'hide_empty' => false,
-            'fields'     => 'ids',
-        ]);
-        if (!is_wp_error($existing)) {
-            foreach ($existing as $termId) {
-                wp_delete_term((int) $termId, $taxonomy);
-            }
-        }
-
-        // Ensure level posts exist for every current slug (incl. platinum).
-        $this->seedDefaultLevels();
-
-        // Before the flag reaches this version benefitTermsFor() falls back
-        // to the hardcoded defaults, so getLevels() yields the seed source.
-        foreach (self::getLevels() as $slug => $level) {
-            $posts = get_posts([
-                'post_type'   => PostTypes\MembershipLevelPostType::POST_TYPE,
-                'numberposts' => 1,
-                'post_status' => 'publish',
-                'fields'      => 'ids',
-                'meta_query'  => [
-                    ['key' => '_level_slug', 'value' => $slug],
-                ],
-            ]);
-            if (empty($posts)) {
-                continue;
-            }
-            $postId = (int) $posts[0];
-
-            // Dedupe by title (first occurrence wins), keep list order.
-            $ordered = [];
-            foreach ((array) ($level['privileges'] ?? []) as $privilege) {
-                if (is_array($privilege)) {
-                    $text = trim((string) ($privilege['text'] ?? $privilege['label'] ?? $privilege['title'] ?? ''));
-                    $desc = trim((string) ($privilege['description'] ?? $privilege['desc'] ?? ''));
-                } else {
-                    $text = trim((string) $privilege);
-                    $desc = '';
-                }
-                if ($text !== '' && !isset($ordered[$text])) {
-                    $ordered[$text] = $desc;
-                }
-            }
-            if (empty($ordered)) {
-                continue;
-            }
-
-            // Passing names creates missing terms automatically; sort=true
-            // stores term_order by position.
-            $result = wp_set_object_terms($postId, array_keys($ordered), $taxonomy, false);
-            if (is_wp_error($result)) {
-                error_log(sprintf(
-                    '[jankx/membership] benefit seed failed for %s: %s',
-                    $slug,
-                    $result->get_error_message()
-                ));
-                return; // Flag not updated: retry on the next request.
-            }
-
-            foreach ($ordered as $name => $desc) {
-                if ($desc === '') {
-                    continue;
-                }
-                $term = get_term_by('name', $name, $taxonomy);
-                if ($term) {
-                    wp_update_term((int) $term->term_id, $taxonomy, ['description' => $desc]);
-                }
-            }
-        }
-
-        update_option('jankx_membership_benefits_seeded', self::BENEFIT_SEED_VERSION, false);
-    }
-
-    /**
      * Benefit items (title + description pairs) for a level slug, from the
-     * membership_benefit taxonomy. Returns null while the taxonomy is not
-     * the source of truth yet (not registered / seed version not reached)
-     * so callers keep the defaults.
+     * membership_benefit taxonomy. Returns null until the theme seeder has
+     * run (seeders/membership-benefits-data.php via `wp eval-file`) so
+     * callers fall back to whatever privileges data exists.
      *
      * @return array<int, array{text: string, description: string}>|null
      */
@@ -414,7 +318,7 @@ class MembershipLevelsExtension extends AbstractExtension
         if (!taxonomy_exists(PostTypes\MembershipLevelPostType::BENEFIT_TAXONOMY)) {
             return null;
         }
-        if ((int) get_option('jankx_membership_benefits_seeded') < self::BENEFIT_SEED_VERSION) {
+        if (!get_option('jankx_membership_benefits_seeded')) {
             return null;
         }
 
@@ -471,11 +375,6 @@ class MembershipLevelsExtension extends AbstractExtension
                     'total_orders' => ['min' => 3],
                     'total_spent' => ['min' => 5000000],
                 ],
-                'privileges' => [
-                    ['text' => 'x1 Xu', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Ngày hội thành viên', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Quà tặng lưu niệm', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                ],
             ],
             'gold' => [
                 'name' => 'Vàng',
@@ -486,13 +385,6 @@ class MembershipLevelsExtension extends AbstractExtension
                     'total_orders' => ['min' => 10],
                     'total_spent' => ['min' => 20000000],
                 ],
-                'privileges' => [
-                    ['text' => 'x3 Xu', 'description' => 'Tiết kiệm khi đặt khách sạn, tour và quà tặng'],
-                    ['text' => 'Ngày hội thành viên', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Quà tặng lưu niệm', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Giảm giá cho thành viên Vàng', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Ưu tiên hỗ trợ', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                ],
             ],
             'platinum' => [
                 'name' => 'Bạch kim',
@@ -502,18 +394,6 @@ class MembershipLevelsExtension extends AbstractExtension
                 'criteria' => [
                     'total_orders' => ['min' => 20],
                     'total_spent' => ['min' => 50000000],
-                ],
-                'privileges' => [
-                    ['text' => 'x3 Xu', 'description' => 'Tiết kiệm khi đặt khách sạn, tour và quà tặng'],
-                    ['text' => 'Ngày hội thành viên', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Quà tặng lưu niệm', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Giảm giá cho thành viên Vàng', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Quà tặng lưu niệm', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Ưu tiên hỗ trợ', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Ưu tiên hỗ trợ', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Ưu tiên hỗ trợ', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Ưu tiên hỗ trợ', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
-                    ['text' => 'Ưu tiên hỗ trợ', 'description' => 'Nhận hoàn tiền mỗi đơn hàng'],
                 ],
             ],
         ];
@@ -537,9 +417,10 @@ class MembershipLevelsExtension extends AbstractExtension
             }
         }
 
-        // Benefits come from the membership_benefit taxonomy (terms assigned
-        // on membership_level posts) once seeded; taxonomy wins over defaults
-        // and saved option data.
+        // Benefits: membership_benefit taxonomy (terms assigned on
+        // membership_level posts) — seeded by the theme's
+        // seeders/membership-benefits-data.php. Until then privileges stay
+        // unset and renderers show their empty state.
         foreach (array_keys($levels) as $slug) {
             $terms = self::benefitTermsFor($slug);
             if ($terms !== null) {
