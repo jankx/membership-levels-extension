@@ -6,11 +6,10 @@ use Jankx\Extensions\MembershipLevels\Engine\RuleEngine;
 use Jankx\Extensions\MembershipLevels\MembershipLevelsExtension;
 
 /**
- * Overview "Hạng thành viên" section: every membership level rendered as a
- * card (no switcher). Each card shows its status badge — "Hạng hiện tại" or
- * "Đã khoá" — the level head (icon + name + description), progress toward
- * the next level (current card only), benefits (phúc lợi) as icon + text,
- * and the level's upgrade criteria (điều kiện).
+ * Overview "Hạng thành viên" section: a card-style switcher. Each level is a
+ * clickable card showing its status badge — "Hạng hiện tại" or "Đã khoá" —
+ * and its upgrade criteria (điều kiện). Selecting a card reveals that level's
+ * detail panel with progress and benefits (phúc lợi) as icon + text.
  */
 class OverviewMembership
 {
@@ -32,37 +31,99 @@ class OverviewMembership
         $currentSlug = self::currentSlug($user->ID, $levels);
         $points = (int) get_user_meta($user->ID, 'jankx_points', true);
 
-        echo '<div class="jankx-level-cards">';
+        echo '<div class="jankx-level-switch" data-jankx-level-switch>';
+
+        // ── Card switcher (selector) ──
+        echo '<div class="jankx-level-cards" role="tablist" aria-label="' . esc_attr__('Chọn hạng thành viên', 'jankx') . '">';
         foreach ($levels as $slug => $level) {
-            self::renderCard($slug, $level, $slug === $currentSlug, $levels, $user->ID, $points);
+            self::renderCard($slug, $level, $slug === $currentSlug);
         }
+        echo '</div>';
+
+        // ── Detail panes ──
+        echo '<div class="jankx-level-panes">';
+        foreach ($levels as $slug => $level) {
+            self::renderDetail($slug, $level, $slug === $currentSlug, $levels, $user->ID, $points);
+        }
+        echo '</div>';
+
         echo '</div>';
     }
 
-    protected static function renderCard(string $slug, array $level, bool $isCurrent, array $levels, int $userId, int $points): void
+    /**
+     * Switcher card: head (icon + name + status badge) + upgrade criteria.
+     */
+    protected static function renderCard(string $slug, array $level, bool $isCurrent): void
     {
         $color = $level['color'] ?? '#65A30D';
         printf(
-            '<article class="jankx-level-card%s" data-level="%s" style="--level-color: %s;">',
-            $isCurrent ? ' is-current' : ' is-locked',
+            '<button type="button" class="jankx-level-card%s" role="tab" aria-selected="%s" data-level="%s" style="--level-color: %s;">',
+            $isCurrent ? ' is-current is-active' : '',
+            $isCurrent ? 'true' : 'false',
             esc_attr($slug),
             esc_attr($color)
         );
 
-        // Head: icon + title (with status badge) + description
+        echo '<span class="jankx-level-card__top">';
+        echo '<span class="jankx-level-card__icon" aria-hidden="true">' . self::levelIcon($slug, $level) . '</span>';
+        echo '<span class="jankx-level-card__name">' . esc_html($level['name'] ?? $slug) . '</span>';
+        self::renderStatus($isCurrent);
+        echo '</span>';
+
+        if (!empty($level['criteria'])) {
+            echo '<span class="jankx-level-card__criteria-label">' . esc_html__('Điều kiện', 'jankx') . '</span>';
+            echo '<span class="jankx-level-card__criteria">';
+            foreach (self::criteriaList($level['criteria']) as $line) {
+                echo '<span class="jankx-level-card__criterion">' . esc_html($line) . '</span>';
+            }
+            echo '</span>';
+        }
+
+        echo '</button>';
+    }
+
+    /**
+     * Card status badge: "Hạng hiện tại" on the user's level, "Đã khoá" elsewhere.
+     */
+    protected static function renderStatus(bool $isCurrent): void
+    {
+        if ($isCurrent) {
+            echo '<span class="jankx-level-card__status is-current">'
+                . esc_html__('Hạng hiện tại', 'jankx')
+                . '</span>';
+            return;
+        }
+
+        echo '<span class="jankx-level-card__status is-locked">';
+        echo '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+        echo esc_html__('Đã khoá', 'jankx');
+        echo '</span>';
+    }
+
+    protected static function renderDetail(string $slug, array $level, bool $isCurrent, array $levels, int $userId, int $points): void
+    {
+        $color = $level['color'] ?? '#65A30D';
+        printf(
+            '<div class="jankx-level-detail%s" role="tabpanel" data-level="%s" style="--level-color: %s;"%s>',
+            $isCurrent ? ' is-active' : '',
+            esc_attr($slug),
+            esc_attr($color),
+            $isCurrent ? '' : ' hidden'
+        );
+
+        // Head: icon + name + description
         echo '<div class="jankx-level-detail__head">';
         echo '<span class="jankx-level-detail__icon" aria-hidden="true">' . self::levelIcon($slug, $level) . '</span>';
         echo '<div class="jankx-level-detail__info">';
         echo '<div class="jankx-level-detail__title">';
         echo '<strong>' . esc_html($level['name'] ?? $slug) . '</strong>';
-        self::renderStatus($isCurrent);
         echo '</div>';
         if (!empty($level['description'])) {
             echo '<p class="jankx-level-detail__desc">' . esc_html($level['description']) . '</p>';
         }
         echo '</div></div>';
 
-        // Progress toward the next level (only on the user's own card)
+        // Progress toward the next level (only on the user's own level)
         if ($isCurrent) {
             echo self::progressHtml($slug, $levels, $userId, $points);
         }
@@ -88,35 +149,7 @@ class OverviewMembership
             echo '<div class="jankx-level-detail__empty">' . esc_html__('Chưa có quyền lợi nào cho hạng này.', 'jankx') . '</div>';
         }
 
-        // Upgrade criteria — shown on every card
-        if (!empty($level['criteria'])) {
-            echo '<h4 class="jankx-level-detail__subtitle">' . esc_html__('Điều kiện', 'jankx') . '</h4>';
-            echo '<ul class="jankx-level-criteria">';
-            foreach (self::criteriaList($level['criteria']) as $line) {
-                echo '<li>' . esc_html($line) . '</li>';
-            }
-            echo '</ul>';
-        }
-
-        echo '</article>';
-    }
-
-    /**
-     * Card status badge: "Hạng hiện tại" on the user's level, "Đã khoá" elsewhere.
-     */
-    protected static function renderStatus(bool $isCurrent): void
-    {
-        if ($isCurrent) {
-            echo '<span class="jankx-level-card__status is-current">'
-                . esc_html__('Hạng hiện tại', 'jankx')
-                . '</span>';
-            return;
-        }
-
-        echo '<span class="jankx-level-card__status is-locked">';
-        echo '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-        echo esc_html__('Đã khoá', 'jankx');
-        echo '</span>';
+        echo '</div>';
     }
 
     /**
