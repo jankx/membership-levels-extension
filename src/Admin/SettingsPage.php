@@ -45,7 +45,7 @@ class SettingsPage
         register_setting(self::OPTION_GROUP, 'jankx_membership_default_level', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
-            'default' => 'bronze',
+            'default' => 'silver',
         ]);
 
         register_setting(self::OPTION_GROUP, 'jankx_membership_evaluate_on', [
@@ -67,7 +67,7 @@ class SettingsPage
     public function renderSettingsPage(): void
     {
         $autoAssign = get_option('jankx_membership_auto_assign', true);
-        $defaultLevel = get_option('jankx_membership_default_level', 'bronze');
+        $defaultLevel = get_option('jankx_membership_default_level', 'silver');
         $evaluateOn = get_option('jankx_membership_evaluate_on', ['checkout_completed', 'payment_paid']);
         $levels = \Jankx\Extensions\MembershipLevels\MembershipLevelsExtension::getLevels();
         ?>
@@ -216,10 +216,10 @@ class SettingsPage
                 <tbody>
                     <?php foreach ($users as $user): ?>
                         <?php
-                        $userLevel = get_user_meta($user->ID, $levelMeta, true) ?: 'bronze';
+                        $userLevel = get_user_meta($user->ID, $levelMeta, true) ?: 'silver';
                         $orderCount = $this->getUserOrderCount($user->ID);
                         $totalSpent = $this->getUserTotalSpent($user->ID);
-                        $levelData = $levels[$userLevel] ?? $levels['bronze'];
+                        $levelData = $levels[$userLevel] ?? $levels[array_key_first($levels)];
                         ?>
                         <tr>
                             <td>

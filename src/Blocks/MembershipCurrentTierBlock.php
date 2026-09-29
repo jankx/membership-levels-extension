@@ -18,7 +18,7 @@ class MembershipCurrentTierBlock extends Block
         $user = wp_get_current_user();
         $levels = MembershipLevelsExtension::getLevels();
         $currentLevel = MembershipLevelsExtension::get_instance()->getUserLevel($user->ID);
-        $current = $levels[$currentLevel] ?? $levels['bronze'];
+        $current = $levels[$currentLevel] ?? $levels[array_key_first($levels)];
 
         $wrapperAttrs = get_block_wrapper_attributes([
             'class' => 'jankx-membership-section jankx-membership-current-tier',

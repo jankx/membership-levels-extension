@@ -52,6 +52,10 @@ class MembershipLevelsExtension extends AbstractExtension
         // Seed default levels on first activation
         add_action('admin_init', [$this, 'maybeSeedDefaultLevels']);
 
+        // One-time slug migration: 4-tier (bronze/silver/gold/diamond)
+        // -> 3-tier (silver=Bạc, gold=Vàng, platinum=Bạch kim)
+        add_action('init', [$this, 'maybeMigrateLevelSlugs'], 60);
+
         // Gutenberg blocks
         if (did_action('init')) {
             $this->registerBlocks();
@@ -263,7 +267,39 @@ class MembershipLevelsExtension extends AbstractExtension
      */
     public function getUserLevel(int $userId): string
     {
-        return get_user_meta($userId, self::USER_LEVEL_META, true) ?: 'bronze';
+        return get_user_meta($userId, self::USER_LEVEL_META, true) ?: 'silver';
+    }
+
+    /**
+     * One-time migration of legacy level slugs (bronze -> silver,
+     * diamond -> platinum) after the switch to the 3-tier structure.
+     */
+    public function maybeMigrateLevelSlugs(): void
+    {
+        if (get_option('jankx_membership_levels_3tier_migrated')) {
+            return;
+        }
+
+        $map = [
+            'bronze' => 'silver',
+            'diamond' => 'platinum',
+        ];
+
+        $users = get_users([
+            'meta_key' => self::USER_LEVEL_META,
+            'meta_value' => array_keys($map),
+            'meta_compare' => 'IN',
+            'fields' => ['ID'],
+        ]);
+
+        foreach ($users as $user) {
+            $old = get_user_meta($user->ID, self::USER_LEVEL_META, true);
+            if (isset($map[$old])) {
+                update_user_meta($user->ID, self::USER_LEVEL_META, $map[$old]);
+            }
+        }
+
+        update_option('jankx_membership_levels_3tier_migrated', 1, false);
     }
 
     /**
@@ -272,21 +308,9 @@ class MembershipLevelsExtension extends AbstractExtension
     public static function getLevels(): array
     {
         $defaults = [
-            'bronze' => [
-                'name' => 'Bronze',
-                'description' => 'Thành viên mới',
-                'color' => '#CD7F32',
-                'priority' => 0,
-                'criteria' => [],
-                'privileges' => [
-                    'Tích lũy điểm với mỗi chuyến đi',
-                    'Nhận thông báo khuyến mãi sớm',
-                    'Hỗ trợ khách hàng qua email',
-                ],
-            ],
             'silver' => [
-                'name' => 'Silver',
-                'description' => 'Thành viên bạc',
+                'name' => 'Bạc',
+                'description' => 'Thành viên Bạc',
                 'color' => '#C0C0C0',
                 'priority' => 10,
                 'criteria' => [
@@ -294,14 +318,15 @@ class MembershipLevelsExtension extends AbstractExtension
                     'total_spent' => ['min' => 5000000],
                 ],
                 'privileges' => [
-                    'Giảm 5% cho mọi tour',
-                    'Ưu tiên hỗ trợ khách hàng',
-                    'Giữ chỗ tour đến 24 giờ',
+                    'x1 Xu',
+                    'Ngày hội thành viên',
+                    'Nhận hoàn tiền mỗi đơn hàng',
+                    'Quà tặng lưu niệm',
                 ],
             ],
             'gold' => [
-                'name' => 'Gold',
-                'description' => 'Thành viên vàng',
+                'name' => 'Vàng',
+                'description' => 'Thành viên Vàng',
                 'color' => '#FFD700',
                 'priority' => 20,
                 'criteria' => [
@@ -309,14 +334,18 @@ class MembershipLevelsExtension extends AbstractExtension
                     'total_spent' => ['min' => 20000000],
                 ],
                 'privileges' => [
-                    'Giảm 10% cho mọi tour',
-                    'Miễn phí hủy trước 7 ngày',
-                    'Quà tặng nhân dịp sinh nhật',
+                    'x3 Xu',
+                    'Ngày hội thành viên',
+                    'Tiết kiệm khi đặt khách sạn, tour và quà tặng',
+                    'Nhận hoàn tiền mỗi đơn hàng',
+                    'Quà tặng lưu niệm',
+                    'Giảm giá cho thành viên Vàng',
+                    'Ưu tiên hỗ trợ',
                 ],
             ],
-            'diamond' => [
-                'name' => 'Diamond',
-                'description' => 'Thành viên kim cương',
+            'platinum' => [
+                'name' => 'Bạch kim',
+                'description' => 'Thành viên Bạch kim',
                 'color' => '#B9F2FF',
                 'priority' => 30,
                 'criteria' => [
@@ -324,9 +353,13 @@ class MembershipLevelsExtension extends AbstractExtension
                     'total_spent' => ['min' => 50000000],
                 ],
                 'privileges' => [
-                    'Giảm 15% cho mọi tour',
-                    'Tư vấn viên riêng 24/7',
-                    'Đặt tour không cần đặt cọc',
+                    'x3 Xu',
+                    'Ngày hội thành viên',
+                    'Tiết kiệm khi đặt khách sạn, tour và quà tặng',
+                    'Nhận hoàn tiền mỗi đơn hàng',
+                    'Quà tặng lưu niệm',
+                    'Giảm giá cho thành viên Bạch kim',
+                    'Ưu tiên hỗ trợ',
                 ],
             ],
         ];
@@ -392,7 +425,7 @@ class MembershipLevelsExtension extends AbstractExtension
     {
         $currentLevel = $this->getUserLevel($user->ID);
         $levels = self::getLevels();
-        $levelData = $levels[$currentLevel] ?? $levels['bronze'];
+        $levelData = $levels[$currentLevel] ?? $levels[array_key_first($levels)];
         $isAdmin = current_user_can('manage_options');
         ?>
         <h2>Hạng thành viên</h2>

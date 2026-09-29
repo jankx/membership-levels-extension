@@ -47,12 +47,12 @@ class AccountLevelSummaryBlock extends Block
         $levels = MembershipLevelsExtension::getLevels();
         $levelSlug = MembershipLevelsExtension::get_instance()
             ? MembershipLevelsExtension::get_instance()->getUserLevel($user->ID)
-            : (get_user_meta($user->ID, MembershipLevelsExtension::USER_LEVEL_META, true) ?: 'bronze');
+            : (get_user_meta($user->ID, MembershipLevelsExtension::USER_LEVEL_META, true) ?: 'silver');
 
-        $level = $levels[$levelSlug] ?? $levels['bronze'] ?? [
-            'name'        => 'Bronze',
-            'description' => 'Thành viên mới',
-            'color'       => '#CD7F32',
+        $level = $levels[$levelSlug] ?? $levels[array_key_first($levels)] ?? [
+            'name'        => 'Bạc',
+            'description' => 'Thành viên Bạc',
+            'color'       => '#C0C0C0',
         ];
 
         if (!$showIcon && !$showName && !$showDescription) {
@@ -108,6 +108,7 @@ class AccountLevelSummaryBlock extends Block
             'bronze'  => '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
             'silver'  => '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
             'gold'    => '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+            'platinum' => '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/></svg>',
             'diamond' => '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/></svg>',
         ];
 
