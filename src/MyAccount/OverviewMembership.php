@@ -103,7 +103,12 @@ class OverviewMembership
             foreach ($benefits as $benefit) {
                 echo '<li class="jankx-level-benefit">';
                 echo '<span class="jankx-level-benefit__icon" aria-hidden="true">' . self::benefitIcon($benefit['icon']) . '</span>';
+                echo '<span class="jankx-level-benefit__body">';
                 echo '<span class="jankx-level-benefit__text">' . esc_html($benefit['text']) . '</span>';
+                if ($benefit['description'] !== '') {
+                    echo '<span class="jankx-level-benefit__desc">' . esc_html($benefit['description']) . '</span>';
+                }
+                echo '</span>';
                 echo '</li>';
             }
             echo '</ul>';
@@ -192,9 +197,9 @@ class OverviewMembership
     }
 
     /**
-     * Normalise level privileges into ['text', 'icon'] pairs.
-     * Supports plain strings, arrays with text/label and an optional icon,
-     * or a single newline/comma separated string.
+     * Normalise level privileges into ['text', 'description', 'icon'] triples.
+     * Supports plain strings, arrays with text/label and an optional
+     * description/icon, or a single newline/comma separated string.
      */
     protected static function benefits(array $level): array
     {
@@ -211,9 +216,11 @@ class OverviewMembership
         foreach ($raw as $item) {
             if (is_string($item)) {
                 $text = trim($item);
+                $description = '';
                 $icon = '';
             } elseif (is_array($item)) {
                 $text = trim((string) ($item['text'] ?? $item['label'] ?? $item['title'] ?? $item['name'] ?? ''));
+                $description = trim((string) ($item['description'] ?? $item['desc'] ?? ''));
                 $icon = (string) ($item['icon'] ?? '');
             } else {
                 continue;
@@ -223,7 +230,7 @@ class OverviewMembership
                 continue;
             }
 
-            $benefits[] = ['text' => $text, 'icon' => $icon];
+            $benefits[] = ['text' => $text, 'description' => $description, 'icon' => $icon];
         }
 
         return $benefits;

@@ -4,10 +4,12 @@ namespace Jankx\Extensions\MembershipLevels\PostTypes;
 class MembershipLevelPostType
 {
     const POST_TYPE = 'membership_level';
+    const BENEFIT_TAXONOMY = 'membership_benefit';
 
     public function register(): void
     {
         add_action('init', [$this, 'register_post_type']);
+        add_action('init', [$this, 'register_taxonomy']);
         add_action('add_meta_boxes', [$this, 'addMetaBoxes']);
         add_action('save_post_' . self::POST_TYPE, [$this, 'saveMetaBox']);
         add_filter('use_block_editor_for_post_type', [$this, 'disableGutenberg'], 10, 2);
@@ -59,6 +61,50 @@ class MembershipLevelPostType
                 'publish_posts' => 'publish_posts',
                 'read_private_posts' => 'read_private_posts',
             ],
+        ]);
+    }
+
+    /**
+     * Taxonomy "Ưu đãi" — terms are benefits, assigned per level post.
+     */
+    public function register_taxonomy(): void
+    {
+        if (taxonomy_exists(self::BENEFIT_TAXONOMY)) {
+            return;
+        }
+
+        $labels = [
+            'name'                       => __('Ưu đãi', 'jankx'),
+            'singular_name'              => __('Ưu đãi', 'jankx'),
+            'menu_name'                  => __('Ưu đãi', 'jankx'),
+            'add_new'                    => __('Thêm ưu đãi', 'jankx'),
+            'add_new_item'               => __('Thêm ưu đãi mới', 'jankx'),
+            'edit_item'                  => __('Sửa ưu đãi', 'jankx'),
+            'new_item'                   => __('Ưu đãi mới', 'jankx'),
+            'view_item'                  => __('Xem ưu đãi', 'jankx'),
+            'search_items'               => __('Tìm ưu đãi', 'jankx'),
+            'not_found'                  => __('Không tìm thấy ưu đãi', 'jankx'),
+            'not_found_in_trash'         => __('Không tìm thấy ưu đãi trong thùng rác', 'jankx'),
+            'all_items'                  => __('Tất cả ưu đãi', 'jankx'),
+            'populate_term'              => 'Thêm ưu đãi',
+            'separate_items_with_commas' => __('Cách nhau bởi dấu phẩy', 'jankx'),
+            'choose_from_most_used'      => __('Chọn từ các ưu đãi phổ biến', 'jankx'),
+        ];
+
+        register_taxonomy(self::BENEFIT_TAXONOMY, [self::POST_TYPE], [
+            'labels'            => $labels,
+            'public'            => false,
+            'publicly_queryable' => false,
+            'show_ui'           => true,
+            'show_in_menu'      => true,
+            'show_in_rest'      => false,
+            'show_admin_column' => true,
+            'hierarchical'      => false,
+            'rewrite'           => false,
+            'query_var'         => false,
+            // Store term_order on assignment so the display order matches
+            // the order benefits were added/seeded.
+            'sort'              => true,
         ]);
     }
 

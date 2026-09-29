@@ -31,7 +31,22 @@ class MembershipPrivilegesBlock extends Block
             $output .= '<h3 class="jankx-section-title">' . esc_html__('Quyền lợi', 'jankx') . '</h3>';
             $output .= '<ul class="jankx-membership-privileges">';
             foreach ($privileges as $privilege) {
-                $output .= '<li>' . esc_html($privilege) . '</li>';
+                if (is_array($privilege)) {
+                    $text = trim((string) ($privilege['text'] ?? $privilege['label'] ?? $privilege['title'] ?? $privilege['name'] ?? ''));
+                    $description = trim((string) ($privilege['description'] ?? $privilege['desc'] ?? ''));
+                    if ($text === '') {
+                        continue;
+                    }
+                    $output .= '<li class="jankx-membership-privilege">';
+                    $output .= '<span class="jankx-membership-privilege__name">' . esc_html($text) . '</span>';
+                    if ($description !== '') {
+                        $output .= '<span class="jankx-membership-privilege__desc">' . esc_html($description) . '</span>';
+                    }
+                    $output .= '</li>';
+                } else {
+                    $output .= '<li class="jankx-membership-privilege"><span class="jankx-membership-privilege__name">'
+                        . esc_html((string) $privilege) . '</span></li>';
+                }
             }
             $output .= '</ul>';
         } else {
