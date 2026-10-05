@@ -1,0 +1,37 @@
+/**
+ * Account Level Summary — layout.
+ *
+ * The card body is a two-column grid: the badge occupies column 1 and spans
+ * every row, the text blocks stack in column 2. Using grid rather than flex
+ * means the stack survives reordering and survives the icon being deleted —
+ * with flex the name and description would sit side by side instead.
+ */
+.jankx-account-level-summary__inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: start;
+}
+
+.jankx-account-level-summary__inner > .jankx-level-summary-icon {
+    grid-column: 1;
+    grid-row: 1 / -1;
+}
+
+.jankx-account-level-summary__inner > :not(.jankx-level-summary-icon) {
+    grid-column: 2;
+}
+
+/* Without an icon there is no column 1 to fill, so collapse it. */
+.jankx-account-level-summary__inner:not(:has(.jankx-level-summary-icon)) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.jankx-level-summary-description-wrap {
+    min-width: 0;
+}
+
+.jankx-level-summary-link:hover,
+.jankx-level-summary-link:focus {
+    text-decoration: underline;
+}

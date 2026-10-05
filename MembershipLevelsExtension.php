@@ -117,6 +117,11 @@ class MembershipLevelsExtension extends AbstractExtension
             'membership-privileges'    => \Jankx\Extensions\MembershipLevels\Blocks\MembershipPrivilegesBlock::class,
             'membership-all-levels'    => \Jankx\Extensions\MembershipLevels\Blocks\MembershipAllLevelsBlock::class,
             'account-level-summary'    => \Jankx\Extensions\MembershipLevels\Blocks\AccountLevelSummaryBlock::class,
+            // Inner blocks of account-level-summary. Registered at the same time
+            // as the parent so the editor can drop them straight in.
+            'level-summary-icon'       => \Jankx\Extensions\MembershipLevels\Blocks\LevelSummaryIconBlock::class,
+            'level-summary-name'       => \Jankx\Extensions\MembershipLevels\Blocks\LevelSummaryNameBlock::class,
+            'level-summary-description' => \Jankx\Extensions\MembershipLevels\Blocks\LevelSummaryDescriptionBlock::class,
         ];
 
         foreach ($childBlocks as $dirName => $blockClass) {

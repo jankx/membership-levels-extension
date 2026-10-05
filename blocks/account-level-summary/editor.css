@@ -1,0 +1,22 @@
+/**
+ * Editor-only affordances. Mirrors the frontend grid so the preview matches,
+ * plus the hint text and inner-block outlines.
+ */
+.jankx-account-level-summary__hint {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: #646970;
+}
+
+.jankx-account-level-summary .block-editor-inner-blocks {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: start;
+}
+
+.jankx-level-summary-icon__hint {
+    margin: 8px 0 0;
+    font-size: 11px;
+    color: #8c8f94;
+}
