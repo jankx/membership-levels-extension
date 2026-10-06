@@ -82,8 +82,9 @@ class MembershipLevelsExtension extends AbstractExtension
             add_action('init', [$this, 'registerBlocks']);
         }
 
-        // Register sub-page with My Account
-        add_action('jankx/my_account/register_sub_pages', [$this, 'registerAccountSubPage']);
+        // Sub-page "Hội viên" removed: the membership overview section already
+        // renders on the account Overview tab, so the extra menu item (sidebar
+        // + header dropdown) only duplicated it.
 
         // Overview membership section: replace the legacy hardcoded card with
         // the level slider/switcher. Runs on init so it executes after the
@@ -138,6 +139,7 @@ class MembershipLevelsExtension extends AbstractExtension
             'level-summary-icon'       => \Jankx\Extensions\MembershipLevels\Blocks\LevelSummaryIconBlock::class,
             'level-summary-name'       => \Jankx\Extensions\MembershipLevels\Blocks\LevelSummaryNameBlock::class,
             'level-summary-description' => \Jankx\Extensions\MembershipLevels\Blocks\LevelSummaryDescriptionBlock::class,
+            'level-summary-link'       => \Jankx\Extensions\MembershipLevels\Blocks\LevelSummaryLinkBlock::class,
         ];
 
         foreach ($childBlocks as $dirName => $blockClass) {
@@ -150,15 +152,6 @@ class MembershipLevelsExtension extends AbstractExtension
             $block->boot();
             $block->register();
         }
-    }
-
-    public function registerAccountSubPage(): void
-    {
-        if (!class_exists('\Jankx\Extensions\MyAccount\MyAccountExtension')) {
-            return;
-        }
-
-        \Jankx\Extensions\MyAccount\MyAccountExtension::registerSubPageClass(new \Jankx\Extensions\MembershipLevels\MyAccount\MembershipSubPage());
     }
 
     /**

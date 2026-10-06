@@ -1,0 +1,71 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "jankx/level-summary-link",
+    "title": "Level Summary Link",
+    "category": "jankx",
+    "icon": "link",
+    "description": "Optional \"view details\" link of the account level summary.",
+    "textdomain": "jankx",
+    "parent": [
+        "jankx/account-level-summary"
+    ],
+    "editorScript": "file:./build/index.tsx.js",
+    "attributes": {
+        "text": {
+            "type": "string",
+            "default": "Xem chi tiết"
+        },
+        "url": {
+            "type": "string",
+            "default": ""
+        },
+        "linkTarget": {
+            "type": "string",
+            "default": "_self"
+        },
+        "fontSize": {
+            "type": "number",
+            "default": 13
+        },
+        "useLevelColor": {
+            "type": "boolean",
+            "default": true
+        },
+        "showArrow": {
+            "type": "boolean",
+            "default": true
+        },
+        "jankxHideOnUltrawide": {
+            "type": "boolean",
+            "default": false
+        },
+        "jankxHideOnPc": {
+            "type": "boolean",
+            "default": false
+        },
+        "jankxHideOnTablet": {
+            "type": "boolean",
+            "default": false
+        },
+        "jankxHideOnMobile": {
+            "type": "boolean",
+            "default": false
+        }
+    },
+    "supports": {
+        "html": false,
+        "color": {
+            "background": true,
+            "text": true
+        },
+        "spacing": {
+            "padding": true,
+            "margin": true
+        },
+        "typography": {
+            "fontSize": true,
+            "lineHeight": true
+        }
+    }
+}

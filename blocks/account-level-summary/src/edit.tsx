@@ -4,12 +4,14 @@ const ALLOWED_BLOCKS = [
     'jankx/level-summary-icon',
     'jankx/level-summary-name',
     'jankx/level-summary-description',
+    'jankx/level-summary-link',
 ];
 
 const TEMPLATE = [
     ['jankx/level-summary-icon'],
     ['jankx/level-summary-name'],
     ['jankx/level-summary-description'],
+    ['jankx/level-summary-link'],
 ];
 
 export default function Edit() {
@@ -20,7 +22,7 @@ export default function Edit() {
     return (
         <div {...blockProps}>
             <p className="jankx-account-level-summary__hint">
-                Kéo thả các block bên dưới để tuỳ chỉnh từng phần: icon, tên hạng, mô tả. Xoá
+                Kéo thả các block bên dưới để tuỳ chỉnh từng phần: icon, tên hạng, mô tả, link. Xoá
                 block nào thì phần đó không hiển thị.
             </p>
             <InnerBlocks

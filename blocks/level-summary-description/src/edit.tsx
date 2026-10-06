@@ -1,5 +1,5 @@
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
-import { PanelBody, TextControl, TextareaControl, ToggleControl, RangeControl } from '@wordpress/components';
+import { PanelBody, TextareaControl, RangeControl } from '@wordpress/components';
 import ServerSideRender from '@wordpress/server-side-render';
 import { __ } from '@wordpress/i18n';
 import metadata from '../block.json';
@@ -27,34 +27,6 @@ export default function Edit({ attributes, setAttributes }) {
                         min={10}
                         max={28}
                     />
-                </PanelBody>
-                <PanelBody title={__('Detail link', 'jankx')} initialOpen={false}>
-                    <ToggleControl
-                        label={__('Show link', 'jankx')}
-                        checked={attributes.showLink}
-                        onChange={(showLink) => setAttributes({ showLink })}
-                    />
-                    {attributes.showLink && (
-                        <>
-                            <TextControl
-                                label={__('Link text', 'jankx')}
-                                value={attributes.linkText}
-                                onChange={(linkText) => setAttributes({ linkText })}
-                            />
-                            <TextControl
-                                label={__('URL', 'jankx')}
-                                value={attributes.detailUrl}
-                                onChange={(detailUrl) => setAttributes({ detailUrl })}
-                            />
-                            <ToggleControl
-                                label={__('Open in new tab', 'jankx')}
-                                checked={attributes.linkTarget === '_blank'}
-                                onChange={(openNew) =>
-                                    setAttributes({ linkTarget: openNew ? '_blank' : '_self' })
-                                }
-                            />
-                        </>
-                    )}
                 </PanelBody>
             </InspectorControls>
 
