@@ -74,18 +74,19 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                         renderAppender={InnerBlocks.ButtonBlockAppender}
                     />
                 ) : (
-                    <>
+                    <div style={{ position: 'relative' }}>
                         <ServerSideRender
                             block={metadata.name}
                             attributes={attributes}
                         />
-                        <p className="jankx-level-summary-icon__hint">
-                            {__(
-                                'Đang dùng icon mặc định của hạng. Chọn một block Icon / SVG Icon / Advanced Image bên dưới để thay thế.',
-                                'jankx'
-                            )}
-                        </p>
-                    </>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <InnerBlocks
+                                allowedBlocks={ALLOWED_ICON_BLOCKS}
+                                templateLock={false}
+                                renderAppender={InnerBlocks.ButtonBlockAppender}
+                            />
+                        </div>
+                    </div>
                 )}
             </div>
         </>

@@ -52,17 +52,9 @@ class RuleEngine
 
     protected function normalizeCriteria(array $criteria): array
     {
-        $result = [];
-        foreach ($criteria as $key => $value) {
-            if (is_int($key) && is_array($value)) {
-                // Already indexed format: [['type' => 'x', 'min' => 1], ...]
-                $result[] = $value;
-            } elseif (is_string($key) && is_array($value)) {
-                // Associative format: ['total_orders' => ['min' => 3], ...]
-                $result[] = array_merge(['type' => $key], $value);
-            }
-        }
-        return $result;
+        // Single definition of the canonical shape so the engine and the
+        // renderers cannot drift apart.
+        return MembershipLevelsExtension::normalizeCriteria($criteria);
     }
 
     /**

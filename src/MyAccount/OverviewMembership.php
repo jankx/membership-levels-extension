@@ -187,8 +187,9 @@ class OverviewMembership
             . sprintf(esc_html__('Tiếp theo: %s', 'jankx'), esc_html($next['name'] ?? $nextSlug))
             . '</div>';
 
-        foreach ($criteria as $key => $criterion) {
-            $min = is_array($criterion) ? (float) ($criterion['min'] ?? 0) : (float) $criterion;
+        foreach (MembershipLevelsExtension::normalizeCriteria($criteria) as $criterion) {
+            $key = $criterion['type'];
+            $min = (float) ($criterion['min'] ?? 0);
             if ($min <= 0) {
                 continue;
             }
@@ -313,12 +314,13 @@ class OverviewMembership
         $defs = MembershipLevelsExtension::getCriteria();
         $lines = [];
 
-        foreach ($criteria as $key => $criterion) {
-            $min = is_array($criterion) ? (float) ($criterion['min'] ?? 0) : (float) $criterion;
+        foreach (MembershipLevelsExtension::normalizeCriteria($criteria) as $criterion) {
+            $key = $criterion['type'];
+            $min = (float) ($criterion['min'] ?? 0);
             if ($min <= 0) {
                 continue;
             }
-            $type = $defs[$key]['type'] ?? 'number';
+            $type  = $defs[$key]['type'] ?? 'number';
             $label = $defs[$key]['label'] ?? $key;
             $lines[] = sprintf(esc_html__('Từ %s %s', 'jankx'), self::formatStat($min, $type), $label);
         }

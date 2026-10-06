@@ -11,6 +11,15 @@ class MembershipLevelsExtension extends AbstractExtension
     const CRITERIA_OPTION = 'jankx_membership_criteria';
     const USER_LEVEL_META = 'jankx_membership_level';
 
+    const LEVELS_CACHE_KEY = 'jankx_membership_levels_data';
+    const LEVELS_CACHE_TTL = 12 * HOUR_IN_SECONDS;
+
+    /** Per-request memo so a single request never rebuilds the level list twice. */
+    protected static array $levelsMemo = [];
+
+    /** Per-request memo for benefit terms, dropped together with the levels cache. */
+    protected static array $benefitMemo = [];
+
     public function __construct()
     {
         $this->register_autoloader();
@@ -49,8 +58,15 @@ class MembershipLevelsExtension extends AbstractExtension
         // CPT for membership levels
         (new PostTypes\MembershipLevelPostType())->register();
 
+        // Term meta: SVG icon for membership_benefit taxonomy
+        (new Admin\BenefitTermMeta())->register();
+
         // Seed default levels on first activation
         add_action('admin_init', [$this, 'maybeSeedDefaultLevels']);
+
+        // The level list is cached because every account render reads it.
+        // The cache is only dropped when membership_level data changes.
+        $this->registerCacheHooks();
 
         // One-time slug migration: 4-tier (bronze/silver/gold/diamond)
         // -> 3-tier (silver=Bạc, gold=Vàng, platinum=Bạch kim)
@@ -367,10 +383,84 @@ class MembershipLevelsExtension extends AbstractExtension
 
     /**
      * Get all defined membership levels
+     *
+     * Resolution order per level: built-in defaults, then the historical
+     * `jankx_membership_levels` option, then the `membership_level` posts. The
+     * CPT is what an admin actually edits (slug, colour, priority, criteria),
+     * so it has the final say — without it the frontend kept showing the
+     * hardcoded defaults no matter what was saved in admin.
+     *
+     * The result is cached because every account render reads it; the cache is
+     * dropped by flushLevelsCache() whenever membership_level data changes.
      */
     public static function getLevels(): array
     {
-        $defaults = [
+        if (isset(self::$levelsMemo[0])) {
+            return self::$levelsMemo[0];
+        }
+
+        $cached = get_transient(self::LEVELS_CACHE_KEY);
+        if (is_array($cached)) {
+            return self::$levelsMemo[0] = $cached;
+        }
+
+        $defaults = self::defaultLevels();
+
+        $custom = get_option(self::LEVELS_OPTION, []);
+        $custom = is_array($custom) ? $custom : [];
+
+        // Merge per level so a saved level without e.g. privileges still
+        // inherits the defaults for that level.
+        $levels = [];
+        foreach ($defaults as $slug => $level) {
+            $saved = isset($custom[$slug]) && is_array($custom[$slug])
+                ? $custom[$slug]
+                : [];
+            $levels[$slug] = wp_parse_args($saved, $level);
+        }
+        foreach ($custom as $slug => $level) {
+            if (!isset($levels[$slug]) && is_array($level)) {
+                $levels[$slug] = $level;
+            }
+        }
+
+        // The CPT is the admin-facing source of truth.
+        foreach (self::levelsFromPosts($levels) as $slug => $level) {
+            $levels[$slug] = isset($levels[$slug]) && is_array($levels[$slug])
+                ? array_merge($levels[$slug], $level)
+                : $level;
+        }
+
+        // One canonical criteria shape for every consumer: a list of
+        // {type, min, max} rows, the same form the meta box saves.
+        foreach ($levels as $slug => $level) {
+            $levels[$slug]['criteria'] = self::normalizeCriteria($level['criteria'] ?? []);
+            $levels[$slug]['priority'] = (int) ($level['priority'] ?? 0);
+        }
+
+        // Benefits: membership_benefit taxonomy (terms assigned on
+        // membership_level posts) — seeded by the theme's
+        // seeders/membership-benefits-data.php. Until then privileges stay
+        // unset and renderers show their empty state.
+        foreach (array_keys($levels) as $slug) {
+            $terms = self::benefitTermsFor($slug);
+            if ($terms !== null) {
+                $levels[$slug]['privileges'] = $terms;
+            }
+        }
+
+        set_transient(self::LEVELS_CACHE_KEY, $levels, self::LEVELS_CACHE_TTL);
+
+        return self::$levelsMemo[0] = $levels;
+    }
+
+    /**
+     * Built-in levels. Kept in code so a fresh install (no CPT rows yet) still
+     * renders a usable account overview and can seed the CPT from these.
+     */
+    protected static function defaultLevels(): array
+    {
+        return [
             'silver' => [
                 'name' => 'Bạc',
                 'description' => 'Thành viên Bạc',
@@ -402,38 +492,201 @@ class MembershipLevelsExtension extends AbstractExtension
                 ],
             ],
         ];
+    }
 
-        $custom = get_option(self::LEVELS_OPTION, []);
+    /**
+     * Build levels from the membership_level posts.
+     *
+     * Only the fields an admin can edit are returned; anything missing or
+     * invalid is simply left out so the caller keeps the option/default value.
+     * $fallback supplies the current name/description for posts with an empty
+     * title/content.
+     */
+    protected static function levelsFromPosts(array $fallback): array
+    {
+        if (!post_type_exists(PostTypes\MembershipLevelPostType::POST_TYPE)) {
+            return [];
+        }
 
-        // Merge per level so a saved level without e.g. privileges still
-        // inherits the defaults for that level.
+        $posts = get_posts([
+            'post_type'        => PostTypes\MembershipLevelPostType::POST_TYPE,
+            'post_status'      => 'any',
+            'numberposts'      => -1,
+            'orderby'          => 'menu_order ID',
+            'order'            => 'ASC',
+            'suppress_filters' => false,
+        ]);
+
         $levels = [];
-        foreach ($defaults as $slug => $level) {
-            $saved = (is_array($custom) && isset($custom[$slug]) && is_array($custom[$slug]))
-                ? $custom[$slug]
-                : [];
-            $levels[$slug] = wp_parse_args($saved, $level);
-        }
-        if (is_array($custom)) {
-            foreach ($custom as $slug => $level) {
-                if (!isset($levels[$slug]) && is_array($level)) {
-                    $levels[$slug] = $level;
-                }
+        foreach ($posts as $post) {
+            $slug = sanitize_key((string) (get_post_meta($post->ID, '_level_slug', true) ?: $post->post_name));
+            if ($slug === '') {
+                continue;
             }
-        }
 
-        // Benefits: membership_benefit taxonomy (terms assigned on
-        // membership_level posts) — seeded by the theme's
-        // seeders/membership-benefits-data.php. Until then privileges stay
-        // unset and renderers show their empty state.
-        foreach (array_keys($levels) as $slug) {
-            $terms = self::benefitTermsFor($slug);
-            if ($terms !== null) {
-                $levels[$slug]['privileges'] = $terms;
+            $level = [];
+
+            $name = trim($post->post_title);
+            if ($name !== '') {
+                $level['name'] = $name;
+            } elseif (!empty($fallback[$slug]['name'])) {
+                $level['name'] = $fallback[$slug]['name'];
             }
+
+            $description = trim($post->post_content);
+            if ($description !== '') {
+                $level['description'] = $description;
+            } elseif (!empty($fallback[$slug]['description'])) {
+                $level['description'] = $fallback[$slug]['description'];
+            }
+
+            // Only trust a colour WordPress recognises as a hex value, so a bad
+            // meta value can never leak arbitrary text into the inline style.
+            $color = sanitize_hex_color((string) get_post_meta($post->ID, '_level_color', true));
+            if ($color) {
+                $level['color'] = $color;
+            }
+
+            $priority = get_post_meta($post->ID, '_level_priority', true);
+            if ($priority !== '' && $priority !== false && $priority !== null) {
+                $level['priority'] = (int) $priority;
+            }
+
+            $discount = get_post_meta($post->ID, '_level_discount', true);
+            if ($discount !== '' && $discount !== false && $discount !== null) {
+                $level['discount'] = (float) $discount;
+            }
+
+            $criteria = get_post_meta($post->ID, '_level_criteria', true);
+            if (is_array($criteria) && $criteria !== []) {
+                $level['criteria'] = $criteria;
+            }
+
+            $levels[$slug] = $level;
         }
 
         return $levels;
+    }
+
+    /**
+     * Normalise criteria into one shape every consumer understands: a list of
+     * ['type' => 'total_orders', 'min' => 3, 'max' => 0] rows.
+     *
+     * Levels have historically been stored as an associative map
+     * (['total_orders' => ['min' => 3]]) while the meta box saves a list
+     * ([['type' => 'total_orders', 'min' => 3]]), so both are accepted here.
+     * Rows with no bound at all are dropped: they match every user and only
+     * add noise to the rendered criteria list.
+     */
+    public static function normalizeCriteria(array $criteria): array
+    {
+        $normalized = [];
+
+        foreach ($criteria as $key => $row) {
+            if (is_int($key) && is_array($row)) {
+                $type = (string) ($row['type'] ?? '');
+            } elseif (is_string($key) && is_array($row)) {
+                $type = $key;
+                $row  = ['min' => $row['min'] ?? 0, 'max' => $row['max'] ?? 0];
+            } else {
+                continue;
+            }
+
+            $type = sanitize_key($type);
+            if ($type === '') {
+                continue;
+            }
+
+            $min = (float) ($row['min'] ?? 0);
+            $max = (float) ($row['max'] ?? 0);
+            if ($min <= 0 && $max <= 0) {
+                continue;
+            }
+
+            $normalized[] = [
+                'type' => $type,
+                'min'  => $min,
+                'max'  => $max,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Drop the cached level list. Called only when membership_level data (or
+     * the criteria/benefit definitions feeding it) changes.
+     */
+    public static function flushLevelsCache(): void
+    {
+        self::$levelsMemo  = [];
+        self::$benefitMemo = [];
+        delete_transient(self::LEVELS_CACHE_KEY);
+    }
+
+    protected function registerCacheHooks(): void
+    {
+        $postType = PostTypes\MembershipLevelPostType::POST_TYPE;
+
+        // Priority 99 so the meta box handler (priority 10) has already written
+        // the _level_* meta before the cache is dropped.
+        add_action("save_post_{$postType}", [__CLASS__, 'flushLevelsCacheOnSave'], 99, 3);
+        add_action('trashed_post', [__CLASS__, 'flushLevelsCacheOnStatusChange'], 99);
+        add_action('untrashed_post', [__CLASS__, 'flushLevelsCacheOnStatusChange'], 99);
+        add_action('before_delete_post', [__CLASS__, 'flushLevelsCacheOnStatusChange'], 99);
+
+        // Programmatic update_post_meta() calls never fire save_post.
+        foreach (['added_post_meta', 'updated_post_meta', 'deleted_post_meta'] as $hook) {
+            add_action($hook, [__CLASS__, 'flushLevelsCacheOnMeta'], 99, 4);
+        }
+
+        // Benefit terms attached to a level feed privileges into the cache.
+        add_action('set_object_terms', [__CLASS__, 'flushLevelsCacheOnTerms'], 99, 4);
+        add_action('created_' . PostTypes\MembershipLevelPostType::BENEFIT_TAXONOMY, [__CLASS__, 'flushLevelsCache']);
+        add_action('edited_' . PostTypes\MembershipLevelPostType::BENEFIT_TAXONOMY, [__CLASS__, 'flushLevelsCache']);
+        add_action('delete_' . PostTypes\MembershipLevelPostType::BENEFIT_TAXONOMY, [__CLASS__, 'flushLevelsCache']);
+
+        // Criteria definitions and the legacy level option are inputs too.
+        foreach ([self::LEVELS_OPTION, self::CRITERIA_OPTION] as $option) {
+            add_action('update_option_' . $option, [__CLASS__, 'flushLevelsCache']);
+            add_action('add_option_' . $option, [__CLASS__, 'flushLevelsCache']);
+            add_action('delete_option_' . $option, [__CLASS__, 'flushLevelsCache']);
+        }
+    }
+
+    public static function flushLevelsCacheOnSave(int $postId, $post = null, bool $update = false): void
+    {
+        if (($post instanceof \WP_Post && $post->post_type === PostTypes\MembershipLevelPostType::POST_TYPE)
+            || (!$post && get_post_type($postId) === PostTypes\MembershipLevelPostType::POST_TYPE)) {
+            self::flushLevelsCache();
+        }
+    }
+
+    public static function flushLevelsCacheOnStatusChange(int $postId, $status = null): void
+    {
+        if (get_post_type($postId) === PostTypes\MembershipLevelPostType::POST_TYPE) {
+            self::flushLevelsCache();
+        }
+    }
+
+    public static function flushLevelsCacheOnMeta(int $metaId, int $objectId, string $metaKey, $metaValue = ''): void
+    {
+        if (strpos($metaKey, '_level_') !== 0) {
+            return;
+        }
+        if (get_post_type($objectId) === PostTypes\MembershipLevelPostType::POST_TYPE) {
+            self::flushLevelsCache();
+        }
+    }
+
+    public static function flushLevelsCacheOnTerms(int $objectId, $terms, $ttIds, string $taxonomy): void
+    {
+        if ($taxonomy !== PostTypes\MembershipLevelPostType::BENEFIT_TAXONOMY) {
+            return;
+        }
+        if (get_post_type($objectId) === PostTypes\MembershipLevelPostType::POST_TYPE) {
+            self::flushLevelsCache();
+        }
     }
 
     /**
