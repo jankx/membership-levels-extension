@@ -662,8 +662,10 @@ class MembershipLevelsExtension extends AbstractExtension
         }
     }
 
-    public static function flushLevelsCacheOnMeta(int $metaId, int $objectId, string $metaKey, $metaValue = ''): void
+    public static function flushLevelsCacheOnMeta($metaId, int $objectId, string $metaKey, $metaValue = ''): void
     {
+        // added/updated pass a single meta id (int); deleted_post_meta passes
+        // an array of deleted meta ids. Either way only $objectId + $metaKey matter.
         if (strpos($metaKey, '_level_') !== 0) {
             return;
         }
